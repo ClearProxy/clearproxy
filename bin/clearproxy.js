@@ -213,9 +213,9 @@ ${chalk.bold("Description:")}
 
 ${chalk.bold("Examples:")}
   ${chalk.cyan("$ clearproxy regions")}
-  ${chalk.dim("● us-east         United States East")}
-  ${chalk.dim("● eu-west         Europe West")}
-  ${chalk.dim("● sg              Singapore")}
+  ${chalk.dim("● us1         Washington, USA")}
+  ${chalk.dim("● gb1         London, UK")}
+  ${chalk.dim("● sg1              Singapore")}
 
   ${chalk.cyan("$ clearproxy regions --json")}
   ${chalk.dim('{"regions": [{"code": "us", "name": "United States"}]}')}
@@ -326,7 +326,7 @@ ${chalk.bold("Arguments:")}
                 ${chalk.dim("If not provided, reads from remaining args")}
 
 ${chalk.bold("Options:")}
-  ${chalk.cyan("--region")}      ${chalk.white("Check region (e.g., us, eu, sg)")} ${chalk.dim("[optional]")}
+  ${chalk.cyan("--region")}      ${chalk.white("Check region (e.g., us1, us2, sg1)")} ${chalk.dim("[optional]")}
                 ${chalk.dim("Default: auto-selected by API")}
 
   ${chalk.cyan("--timeout")}     ${chalk.white("Timeout per proxy in milliseconds")} ${chalk.dim("[optional]")}
@@ -376,7 +376,7 @@ ${chalk.bold("Examples:")}
 
   ${chalk.gray("# Full example with all options")}
   ${chalk.cyan("$ clearproxy check")} ${chalk.dim("proxies.txt \\")}
-    ${chalk.dim("--region eu \\")}
+    ${chalk.dim("--region us1 \\")}
     ${chalk.dim("--timeout 5000 \\")}
     ${chalk.dim("--type http \\")}
     ${chalk.dim("--format yaml \\")}
