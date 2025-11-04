@@ -52,7 +52,7 @@ clearproxy check proxies.txt
 ### Specify region and type
 
 ```bash
-clearproxy check proxies.txt --region us --type socks5
+clearproxy check proxies.txt --region sg1 --type socks5
 ```
 
 ### Save as plain text
