@@ -1,0 +1,42 @@
+{
+  "name": "clearproxy",
+  "version": "1.0.0",
+  "description": "Official ClearProxy.io SDK and CLI.",
+  "type": "module",
+  "main": "./lib/index.js",
+  "bin": {
+    "clearproxy": "./bin/clearproxy.js"
+  },
+  "keywords": [
+    "proxy",
+    "sdk",
+    "cli",
+    "clearproxy",
+    "proxy-checker",
+    "checker"
+  ],
+  "author": "Clearproxy",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.7.0",
+    "chalk": "^5.6.2",
+    "cli-table3": "^0.6.5",
+    "commander": "^12.0.0",
+    "csv-parse": "^6.1.0",
+    "fs-extra": "^11.2.0",
+    "js-yaml": "^4.1.0",
+    "node-fetch": "^3.3.2",
+    "ora": "^9.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/clearproxy/clearproxy"
+  },
+  "bugs": {
+    "url": "https://github.com/clearproxy/clearproxy/issues"
+  },
+  "homepage": "https://clearproxy.io"
+}
