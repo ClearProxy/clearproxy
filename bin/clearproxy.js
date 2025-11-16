@@ -72,7 +72,7 @@ program
     chalk.dim("The fastest proxy checker powered by ClearProxy.io API.")
   
   )
-  .version("1.0.0", "-v, --version", "Show version info")
+  .version("1.3.0", "-v, --version", "Show version info")
   .hook("preAction", () => printBanner());
 
 // === COMMAND: set-key ===
@@ -320,6 +320,7 @@ program
   .option("--out <file>", "Output file name (default: result.json)", "result.json")
   .option("--format <fmt>", "Output format: json, txt, or yaml (default: json)", "json")
   .option("--simple", "Only show ip:port or auth@ip:port output", false)
+  .option("--custom <json>", "Custom URL validation as JSON array or file path")
   .addHelpText('after', `
 ${chalk.bold("Arguments:")}
   ${chalk.cyan("input")}         ${chalk.white("Path to proxy file or inline proxies")} ${chalk.dim("[optional]")}
@@ -349,6 +350,21 @@ ${chalk.bold("Options:")}
                 ${chalk.dim("Shows: ip:port or user:pass@ip:port")}
                 ${chalk.dim("Hides: country, speed, anonymity, etc.")}
 
+${chalk.bold("Custom URL Validation:")}
+  ${chalk.cyan("--custom")}      ${chalk.white("JSON array or file path (.json)")} ${chalk.dim("[optional]")}
+  
+  ${chalk.bold("Option 1: JSON String (Linux/Mac):")}
+  '[{"url":"...","requiredStatusCodes":[...],"requiredText":"...","caseSensitive":true}]'
+  
+  ${chalk.bold("Option 2: JSON File (Windows/All):")}
+  Create a file (e.g., custom.json) and pass the file path
+  
+  ${chalk.bold("Fields:")}
+  • ${chalk.white("url")}                    ${chalk.dim("Target URL to test")} ${chalk.red("[required]")}
+  • ${chalk.white("requiredStatusCodes")}    ${chalk.dim("Valid HTTP status codes")} ${chalk.dim("[optional, default: [200]]")}
+  • ${chalk.white("requiredText")}           ${chalk.dim("Text that must appear in response")} ${chalk.dim("[optional]")}
+  • ${chalk.white("caseSensitive")}          ${chalk.dim("Case-sensitive text matching")} ${chalk.dim("[optional, default: false]")}
+
 ${chalk.bold("Input Formats:")}
   Supports multiple proxy formats:
   • ${chalk.white("ip:port")}                    ${chalk.dim("→ 1.1.1.1:8080")}
@@ -356,31 +372,52 @@ ${chalk.bold("Input Formats:")}
   • ${chalk.white("ip:port:user:pass")}          ${chalk.dim("→ 1.1.1.1:8080:admin:secret")}
 
 ${chalk.bold("Examples:")}
-  ${chalk.gray("# Check from file")}
+  ${chalk.gray("# Basic check from file")}
   ${chalk.cyan("$ clearproxy check")} ${chalk.dim("proxies.txt")}
 
   ${chalk.gray("# Check with specific region")}
-  ${chalk.cyan("$ clearproxy check")} ${chalk.dim("proxies.txt --region us")}
+  ${chalk.cyan("$ clearproxy check")} ${chalk.dim("proxies.txt --region us1")}
 
   ${chalk.gray("# Check SOCKS5 proxies with custom timeout")}
   ${chalk.cyan("$ clearproxy check")} ${chalk.dim("proxies.txt --type socks5 --timeout 8000")}
 
-  ${chalk.gray("# Check and output as plain text")}
-  ${chalk.cyan("$ clearproxy check")} ${chalk.dim("proxies.txt --format txt --out working.txt")}
+  ${chalk.gray("# Windows: Using JSON file (RECOMMENDED)")}
+  ${chalk.gray("# 1. Create custom.json:")}
+  ${chalk.dim('[{"url":"https://discord.com","requiredStatusCodes":[200,301,302]}]')}
+  ${chalk.gray("# 2. Run command:")}
+  ${chalk.cyan("$ clearproxy check")} ${chalk.dim("proxies.txt --custom custom.json")}
+
+  ${chalk.gray("# Windows: Multiple URLs in file")}
+  ${chalk.gray("# Create custom.json:")}
+  ${chalk.dim('[')}
+  ${chalk.dim('  {"url":"https://discord.com","requiredStatusCodes":[200,301,302]},')}
+  ${chalk.dim('  {"url":"https://www.google.com","requiredStatusCodes":[200],"requiredText":"Search"}')}
+  ${chalk.dim(']')}
+  ${chalk.cyan("$ clearproxy check")} ${chalk.dim("proxies.txt --custom custom.json")}
+
+  ${chalk.gray("# Linux/Mac: Direct JSON string")}
+  ${chalk.cyan("$ clearproxy check")} ${chalk.dim("proxies.txt \\")}
+    ${chalk.dim('--custom \'[{"url":"https://discord.com","requiredStatusCodes":[200,301,302]}]\'')}
+
+  ${chalk.gray("# E-commerce proxy validation (file method)")}
+  ${chalk.gray("# Create ecommerce.json:")}
+  ${chalk.dim('[')}
+  ${chalk.dim('  {"url":"https://shop.com/products","requiredStatusCodes":[200],"requiredText":"Add to Cart"},')}
+  ${chalk.dim('  {"url":"https://shop.com/cart","requiredStatusCodes":[200,302]}')}
+  ${chalk.dim(']')}
+  ${chalk.cyan("$ clearproxy check")} ${chalk.dim("proxies.txt --custom ecommerce.json")}
 
   ${chalk.gray("# Check inline proxies (no file needed)")}
   ${chalk.cyan("$ clearproxy check")} ${chalk.dim("1.1.1.1:8080 8.8.8.8:3128 9.9.9.9:1080")}
 
-  ${chalk.gray("# Check with simplified output")}
-  ${chalk.cyan("$ clearproxy check")} ${chalk.dim("proxies.txt --simple --format txt")}
-
-  ${chalk.gray("# Full example with all options")}
+  ${chalk.gray("# Full example with custom validation")}
   ${chalk.cyan("$ clearproxy check")} ${chalk.dim("proxies.txt \\")}
     ${chalk.dim("--region us1 \\")}
     ${chalk.dim("--timeout 5000 \\")}
     ${chalk.dim("--type http \\")}
-    ${chalk.dim("--format yaml \\")}
-    ${chalk.dim("--out results.yaml")}
+    ${chalk.dim("--custom custom.json \\")}
+    ${chalk.dim("--format json \\")}
+    ${chalk.dim("--out validated.json")}
 
 ${chalk.bold("Output:")}
   Results include:
@@ -388,6 +425,8 @@ ${chalk.bold("Output:")}
   • Response time & anonymity level
   • Country & ISP information
   • Checks used & remaining quota
+  • Custom URL validation results (if --custom used)
+  • Success rate percentage for each custom URL
 `)
   .action(async (input, options) => {
     try {
@@ -412,11 +451,61 @@ ${chalk.bold("Output:")}
       if (!proxies.length)
         throw new Error("No proxies found in input. Provide a file or inline proxies.");
 
+      // Parse custom URLs
+      let customUrls = [];
+      if (options.custom) {
+        try {
+          // Check if it's a file path
+          const customPath = path.resolve(process.cwd(), options.custom);
+          if (fs.existsSync(customPath) && customPath.endsWith('.json')) {
+            // Read from file
+            const fileContent = fs.readFileSync(customPath, 'utf8');
+            customUrls = JSON.parse(fileContent);
+          } else {
+            // Try to parse as JSON string
+            customUrls = JSON.parse(options.custom);
+          }
+          
+          if (!Array.isArray(customUrls)) {
+            throw new Error("--custom must be a JSON array");
+          }
+          // Validate each custom URL
+          customUrls.forEach((urlConfig, idx) => {
+            if (!urlConfig.url) {
+              throw new Error(`Custom URL at index ${idx} is missing 'url' field`);
+            }
+          });
+        } catch (err) {
+          if (err.message.includes('missing')) {
+            throw err; // Re-throw validation errors
+          }
+          console.error(chalk.red("\n✘ Invalid --custom JSON format"));
+          console.log(chalk.yellow("\nTip for Windows users:"));
+          console.log(chalk.dim("  1. Create a file (e.g., custom.json) with your validation rules"));
+          console.log(chalk.dim("  2. Pass the file: ") + chalk.cyan("--custom custom.json"));
+          console.log(chalk.yellow("\nExample custom.json:"));
+          console.log(chalk.dim('  ['));
+          console.log(chalk.dim('    {"url":"https://discord.com","requiredStatusCodes":[200,301,302]},'));
+          console.log(chalk.dim('    {"url":"https://google.com","requiredStatusCodes":[200]}'));
+          console.log(chalk.dim('  ]'));
+          console.log("");
+          throw new Error(`Failed to parse --custom: ${err.message}`);
+        }
+      }
+
       console.log(chalk.dim(`\nChecking ${proxies.length} proxies...`));
       if (options.region)
         console.log(chalk.dim(`→ Region: ${chalk.gray(options.region)}`));
       console.log(chalk.dim(`→ Timeout: ${chalk.gray(options.timeout)}ms`));
-      console.log(chalk.dim(`→ Type   : ${chalk.gray(options.type)}\n`));
+      console.log(chalk.dim(`→ Type   : ${chalk.gray(options.type)}`));
+      
+      if (customUrls.length > 0) {
+        console.log(chalk.dim(`→ Custom URLs: ${chalk.gray(customUrls.length)} validation(s)`));
+        customUrls.forEach((urlConfig, idx) => {
+          console.log(chalk.dim(`  ${idx + 1}. ${chalk.gray(urlConfig.url)}`));
+        });
+      }
+      console.log("");
 
       const spinner = ora(chalk.dim("Blink and it will done...")).start();
 
@@ -431,6 +520,7 @@ ${chalk.bold("Output:")}
           region: options.region || undefined,
           timeout: Number(options.timeout),
           type: options.type || "http",
+          customUrls: customUrls.length > 0 ? customUrls : undefined
         }),
       });
 
@@ -451,18 +541,40 @@ ${chalk.bold("Output:")}
         throw new Error(`Failed to fetch result: ${resultRes.status}`);
       const resultData = await resultRes.json();
 
-      const { summary = {}, metadata = {}, proxies: proxiesOut = [] } = resultData;
+      // Extract data from response
+      const summary = resultData.summary || {};
+      const metadata = resultData.metadata || data.metadata || {};
+      const proxiesOut = resultData.proxies || [];
+      
+      // Custom URL validation can be in multiple places
+      const custom_url_validation = resultData.custom_url_validation || data.custom_url_validation || null;
 
       // --- Summary & Output ---
       const totalWorking = summary.total_working || 0;
       const totalChecked = metadata.total_checked || proxiesOut.length;
       const totalFailed = Math.max(totalChecked - totalWorking, 0);
 
-      const formatted = formatOutput(proxiesOut, options.format, options.simple);
-      fs.writeFileSync(options.out, formatted);
-      console.log(
-        chalk.white(`\nResults saved to ${chalk.gray(options.out)} (${options.format})\n`)
-      );
+      // Save full data if custom validation exists, otherwise save formatted output
+      if (custom_url_validation) {
+        // Save complete response with custom validation
+        const fullOutput = {
+          summary,
+          metadata,
+          proxies: proxiesOut,
+          custom_url_validation
+        };
+        fs.writeFileSync(options.out, JSON.stringify(fullOutput, null, 2));
+        console.log(
+          chalk.white(`\nResults saved to ${chalk.gray(options.out)} (with custom validation)\n`)
+        );
+      } else {
+        // Save normal formatted output
+        const formatted = formatOutput(proxiesOut, options.format, options.simple);
+        fs.writeFileSync(options.out, formatted);
+        console.log(
+          chalk.white(`\nResults saved to ${chalk.gray(options.out)} (${options.format})\n`)
+        );
+      }
 
       // === CLEAN SUMMARY (flat, one-line items) ===
       console.log(chalk.bold.gray("──── SUMMARY ────"));
@@ -489,9 +601,57 @@ ${chalk.bold("Output:")}
       }
 
       if (metadata.processing_time)
-        console.log(`${chalk.dim("[>]")} Took        : ${chalk.white(metadata.processing_time)}\n`);
+        console.log(`${chalk.dim("[>]")} Took        : ${chalk.white(metadata.processing_time)}`);
 
-      console.log(chalk.dim("Done.\n"));
+      // === CUSTOM URL VALIDATION RESULTS ===
+      if (custom_url_validation) {
+        console.log(chalk.bold.gray("\n──── CUSTOM URL VALIDATION ────"));
+        
+        // Show summary if available
+        if (custom_url_validation.summary) {
+          const cvSummary = custom_url_validation.summary;
+          console.log(chalk.white("\nOverall Summary:"));
+          if (cvSummary.total_urls_tested) {
+            console.log(`${chalk.dim("[*]")} URLs Tested   : ${chalk.white(cvSummary.total_urls_tested)}`);
+          }
+          if (cvSummary.total_proxies_tested) {
+            console.log(`${chalk.dim("[*]")} Proxies Tested: ${chalk.white(cvSummary.total_proxies_tested)}`);
+          }
+          if (cvSummary.processing_time) {
+            console.log(`${chalk.dim("[>]")} Processing    : ${chalk.white(cvSummary.processing_time)}`);
+          }
+        }
+        
+        // Show per-URL results
+        const perUrlResults = custom_url_validation.per_url_summary || 
+                             custom_url_validation.results || 
+                             (Array.isArray(custom_url_validation) ? custom_url_validation : []);
+        
+        if (perUrlResults && perUrlResults.length > 0) {
+          console.log(chalk.white("\nPer-URL Results:"));
+          perUrlResults.forEach((result, idx) => {
+            console.log(chalk.white(`\n[${idx + 1}] ${result.url}`));
+            console.log(`${chalk.dim("[*]")} Tested        : ${chalk.white(result.total_tested || result.total_proxies_tested || '?')}`);
+            console.log(`${chalk.dim("[+]")} Success       : ${chalk.green(result.success_count)} ${chalk.dim(`(${result.success_rate})`)}`);
+            console.log(`${chalk.dim("[-]")} Failed        : ${chalk.red(result.failed_count)} ${chalk.dim(`(${((result.failed_count / (result.total_tested || result.success_count + result.failed_count || 1)) * 100).toFixed(2)}%)`)}`);
+            
+            if (result.requiredText) {
+              const caseSensitive = result.caseSensitive ? " (case-sensitive)" : "";
+              console.log(`${chalk.dim("[>]")} Required Text : ${chalk.white(result.requiredText)}${chalk.dim(caseSensitive)}`);
+            }
+            
+            if (result.requiredStatusCodes && result.requiredStatusCodes.length > 0) {
+              console.log(`${chalk.dim("[>]")} Status Codes  : ${chalk.white(result.requiredStatusCodes.join(', '))}`);
+            }
+
+            if (result.error) {
+              console.log(`${chalk.dim("[!]")} Error         : ${chalk.red(result.error)}`);
+            }
+          });
+        }
+      }
+
+      console.log(chalk.dim("\nDone.\n"));
     } catch (err) {
       console.error(chalk.redBright(`\n✘ ${err.message}\n`));
       process.exit(1);
