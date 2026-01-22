@@ -5,6 +5,7 @@ import path from "path";
 import os from "os";
 import { Command } from "commander";
 import fetch from "node-fetch";
+import WebSocket from "ws";
 import ora from "ora";
 import chalk from "chalk";
 import { parseProxies, formatOutput } from "../lib/utils.js";
@@ -523,7 +524,23 @@ ${chalk.bold("Output:")}
       }
       console.log("");
 
-      const spinner = ora(chalk.dim("Blink and it will done...")).start();
+      const jobId = `cli_${Math.random().toString(36).substring(2, 11)}_${Date.now()}`;
+      const spinner = ora(chalk.dim("Uploading Your Proxy List...")).start();
+
+      // Start WebSocket for real-time progress
+      const wsURL = `${API_BASE.replace("http", "ws")}/ws?jobId=${jobId}`;
+      const ws = new WebSocket(wsURL);
+
+      ws.on("message", (data) => {
+        try {
+          const event = JSON.parse(data);
+          if (event.details && event.details.message) {
+            spinner.text = chalk.dim(event.details.message);
+          }
+        } catch (e) { }
+      });
+
+      ws.on("error", () => { });
 
       const res = await fetch(`${API_BASE}/check`, {
         method: "POST",
@@ -536,17 +553,20 @@ ${chalk.bold("Output:")}
           region: options.region || undefined,
           timeout: Number(options.timeout),
           type: options.type || "http",
-          customUrls: customUrls.length > 0 ? customUrls : undefined
+          customUrls: customUrls.length > 0 ? customUrls : undefined,
+          jobId
         }),
       });
 
       if (!res.ok) {
+        ws.close();
         spinner.fail(chalk.red(`API Error: ${res.status}`));
         const text = await res.text();
         throw new Error(text);
       }
 
       const data = await res.json();
+      ws.close();
       spinner.succeed(chalk.white("Sent."));
 
       if (!data.result_url)
