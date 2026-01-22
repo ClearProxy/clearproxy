@@ -38,7 +38,7 @@ function loadKey() {
 // === API Request Helper ===
 async function apiRequest(endpoint, apiKey, options = {}) {
   const spinner = ora(chalk.dim("Fetching data...")).start();
-  
+
   try {
     const res = await fetch(`${API_BASE}${endpoint}`, {
       method: options.method || "GET",
@@ -70,7 +70,7 @@ program
   .name(chalk.cyan("clearproxy"))
   .description(
     chalk.dim("The fastest proxy checker powered by ClearProxy.io API.")
-  
+
   )
   .version("1.3.0", "-v, --version", "Show version info")
   .hook("preAction", () => printBanner());
@@ -96,8 +96,8 @@ ${chalk.bold("Example:")}
     fs.writeFileSync(CONFIG_PATH, JSON.stringify({ apiKey }, null, 2));
     console.log(
       chalk.greenBright("API key saved successfully!") +
-        "\n" +
-        chalk.dim(`Saved to: ${CONFIG_PATH}`)
+      "\n" +
+      chalk.dim(`Saved to: ${CONFIG_PATH}`)
     );
   });
 
@@ -154,11 +154,27 @@ ${chalk.bold("Examples:")}
       const email = user.email || "N/A";
       const checks = user.checks || 0;
 
+      const subscription = user.subscription_detail || {};
+      const isUnlimited = subscription.UnlimitedPro === true || user.UnlimitedPro === true;
+      const expiredAt = subscription.unlimited_expired_at || user.unlimited_expired_at;
+
       console.log(chalk.bold.gray("\n──── ACCOUNT INFO ────"));
       console.log(`${chalk.dim("[*]")} User ID       : ${chalk.white(userId)}`);
       console.log(`${chalk.dim("[*]")} Email         : ${chalk.white(email)}`);
-      console.log(`${chalk.dim("[+]")} Checks Left  : ${chalk.green(checks.toLocaleString())}`);
-      
+
+      if (isUnlimited) {
+        console.log(`${chalk.dim("[+]")} Subscription  : ${chalk.cyan("Unlimited Pro")}`);
+        if (expiredAt) {
+          const expiryDate = new Date(expiredAt).toLocaleString('en-US', {
+            year: 'numeric', month: 'short', day: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+          });
+          console.log(`${chalk.dim("[*]")} Plan Expires : ${chalk.white(expiryDate)}`);
+        }
+      } else {
+        console.log(`${chalk.dim("[+]")} Subscription  : ${chalk.dim("None")}`);
+        console.log(`${chalk.dim("[+]")} Checks Left  : ${chalk.green(checks.toLocaleString())}`);
+      }
 
       // Show usage chart if requested
       if (options.usage && data.usage_last_30_days) {
@@ -166,7 +182,7 @@ ${chalk.bold("Examples:")}
         const usage = data.usage_last_30_days;
         const maxChecks = Math.max(...usage.map(u => u.total_checked));
         const barWidth = 40;
-        
+
         usage.slice(-7).forEach(day => {
           const date = new Date(day.day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
           const checks = day.total_checked;
@@ -188,7 +204,7 @@ ${chalk.bold("Examples:")}
           console.log(`  ${chalk.cyan(type)} - Working: ${working}/${checked}\n`);
         });
       }
-      
+
       console.log("");
     } catch (err) {
       console.error(chalk.redBright(`\n✘ ${err.message}\n`));
@@ -231,14 +247,14 @@ ${chalk.bold("Examples:")}
       }
 
       console.log(chalk.bold.gray("\n──── AVAILABLE REGIONS ────\n"));
-      
+
       if (data.regions && Array.isArray(data.regions)) {
         data.regions.forEach(region => {
           const code = chalk.cyan(region.code || region.id || "?");
           const name = chalk.white(region.name || "Unknown");
           const location = region.location ? chalk.dim(` (${region.location})`) : "";
           const status = region.name === "test1" ? chalk.red("●") : chalk.green("●");
-          
+
           console.log(`  ${status} ${code.padEnd(15)} ${name}${location}`);
         });
       } else if (typeof data === 'object') {
@@ -249,7 +265,7 @@ ${chalk.bold("Examples:")}
           console.log(`  ${chalk.green("●")} ${regionCode.padEnd(15)} ${regionName}`);
         });
       }
-      
+
       console.log("");
     } catch (err) {
       console.error(chalk.redBright(`\n✘ ${err.message}\n`));
@@ -280,28 +296,28 @@ ${chalk.bold("Example:")}
       const data = await apiRequest("/health", apiKey);
 
       console.log(chalk.bold.gray("\n──── HEALTH STATUS ────"));
-      
+
       const status = data.status || data.health;
       const statusColor = status === "ok" || status === "healthy" ? chalk.green : chalk.red;
-      
+
       console.log(`${chalk.dim("[*]")} Status        : ${statusColor(status || "Unknown")}`);
-      
+
       if (data.version) {
         console.log(`${chalk.dim("[*]")} API Version   : ${chalk.white(data.version)}`);
       }
-      
+
       if (data.uptime) {
         console.log(`${chalk.dim("[*]")} Uptime        : ${chalk.white(data.uptime)}`);
       }
-      
+
       if (data.timestamp) {
         console.log(`${chalk.dim("[*]")} Timestamp     : ${chalk.white(new Date(data.timestamp).toLocaleString())}`);
       }
-      
+
       if (data.regions) {
         console.log(`${chalk.dim("[*]")} Active Regions: ${chalk.white(data.regions)}`);
       }
-      
+
       console.log("");
     } catch (err) {
       console.error(chalk.redBright(`\n✘ ${err.message}\n`));
@@ -465,7 +481,7 @@ ${chalk.bold("Output:")}
             // Try to parse as JSON string
             customUrls = JSON.parse(options.custom);
           }
-          
+
           if (!Array.isArray(customUrls)) {
             throw new Error("--custom must be a JSON array");
           }
@@ -498,7 +514,7 @@ ${chalk.bold("Output:")}
         console.log(chalk.dim(`→ Region: ${chalk.gray(options.region)}`));
       console.log(chalk.dim(`→ Timeout: ${chalk.gray(options.timeout)}ms`));
       console.log(chalk.dim(`→ Type   : ${chalk.gray(options.type)}`));
-      
+
       if (customUrls.length > 0) {
         console.log(chalk.dim(`→ Custom URLs: ${chalk.gray(customUrls.length)} validation(s)`));
         customUrls.forEach((urlConfig, idx) => {
@@ -545,7 +561,7 @@ ${chalk.bold("Output:")}
       const summary = resultData.summary || {};
       const metadata = resultData.metadata || data.metadata || {};
       const proxiesOut = resultData.proxies || [];
-      
+
       // Custom URL validation can be in multiple places
       const custom_url_validation = resultData.custom_url_validation || data.custom_url_validation || null;
 
@@ -576,12 +592,21 @@ ${chalk.bold("Output:")}
         );
       }
 
-      // === CLEAN SUMMARY (flat, one-line items) ===
+      const userMeta = metadata.user || {};
+      const subDetail = userMeta.subscription_detail || {};
+      const isUnlimitedPlan = subDetail.UnlimitedPro === true || userMeta.UnlimitedPro === true;
+
       console.log(chalk.bold.gray("──── SUMMARY ────"));
       console.log(`${chalk.dim("[+]")} Working     : ${chalk.white(totalWorking)}`);
       console.log(`${chalk.dim("[-]")} Failed      : ${chalk.white(totalFailed)}`);
       console.log(`${chalk.dim("[*]")} Total Check : ${chalk.white(totalChecked)}`);
-      console.log(`${chalk.dim("[>]")} Checks Used : ${chalk.white(metadata.user?.checks_used || "?")}`);
+
+      if (isUnlimitedPlan) {
+        console.log(`${chalk.dim("[>]")} Plan        : ${chalk.cyan("Unlimited Pro")}`);
+      } else {
+        console.log(`${chalk.dim("[>]")} Checks Used : ${chalk.white(userMeta.checks_used || "?")}`);
+      }
+
       console.log(`${chalk.dim("[>]")} Region Used : ${chalk.white(metadata.region_name || metadata.region_used || options.region || "?")}`);
       console.log(`${chalk.dim("[>]")} Timeout     : ${chalk.white(metadata.timeout_used || options.timeout + "ms")}`);
       console.log(`${chalk.dim("[>]")} Type        : ${chalk.white(options.type || metadata.type_used || "http")}`);
@@ -606,7 +631,7 @@ ${chalk.bold("Output:")}
       // === CUSTOM URL VALIDATION RESULTS ===
       if (custom_url_validation) {
         console.log(chalk.bold.gray("\n──── CUSTOM URL VALIDATION ────"));
-        
+
         // Show summary if available
         if (custom_url_validation.summary) {
           const cvSummary = custom_url_validation.summary;
@@ -621,12 +646,12 @@ ${chalk.bold("Output:")}
             console.log(`${chalk.dim("[>]")} Processing    : ${chalk.white(cvSummary.processing_time)}`);
           }
         }
-        
+
         // Show per-URL results
-        const perUrlResults = custom_url_validation.per_url_summary || 
-                             custom_url_validation.results || 
-                             (Array.isArray(custom_url_validation) ? custom_url_validation : []);
-        
+        const perUrlResults = custom_url_validation.per_url_summary ||
+          custom_url_validation.results ||
+          (Array.isArray(custom_url_validation) ? custom_url_validation : []);
+
         if (perUrlResults && perUrlResults.length > 0) {
           console.log(chalk.white("\nPer-URL Results:"));
           perUrlResults.forEach((result, idx) => {
@@ -634,12 +659,12 @@ ${chalk.bold("Output:")}
             console.log(`${chalk.dim("[*]")} Tested        : ${chalk.white(result.total_tested || result.total_proxies_tested || '?')}`);
             console.log(`${chalk.dim("[+]")} Success       : ${chalk.green(result.success_count)} ${chalk.dim(`(${result.success_rate})`)}`);
             console.log(`${chalk.dim("[-]")} Failed        : ${chalk.red(result.failed_count)} ${chalk.dim(`(${((result.failed_count / (result.total_tested || result.success_count + result.failed_count || 1)) * 100).toFixed(2)}%)`)}`);
-            
+
             if (result.requiredText) {
               const caseSensitive = result.caseSensitive ? " (case-sensitive)" : "";
               console.log(`${chalk.dim("[>]")} Required Text : ${chalk.white(result.requiredText)}${chalk.dim(caseSensitive)}`);
             }
-            
+
             if (result.requiredStatusCodes && result.requiredStatusCodes.length > 0) {
               console.log(`${chalk.dim("[>]")} Status Codes  : ${chalk.white(result.requiredStatusCodes.join(', '))}`);
             }
@@ -660,8 +685,8 @@ ${chalk.bold("Output:")}
 
 // === CUSTOM HELP OUTPUT ===
 // Only show Quick Start when no command is specified (just "clearproxy" or "clearproxy --help")
-const isRootHelp = process.argv.length === 2 || 
-                    (process.argv.length === 3 && (process.argv[2] === '--help' || process.argv[2] === '-h'));
+const isRootHelp = process.argv.length === 2 ||
+  (process.argv.length === 3 && (process.argv[2] === '--help' || process.argv[2] === '-h'));
 
 if (isRootHelp) {
   program.addHelpText(
